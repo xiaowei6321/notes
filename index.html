@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notebook</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+
+
+.search {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.search input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 200px;
+}
+
+.add-note {
+  display: inline-block;
+}
+
+.add-note input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 200px;
+}
+
+.add-note button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.add-note button:hover {
+  background-color: #0069d9;
+}
+
+
+.download, .upload {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.download:hover, .upload:hover {
+  background-color: #0069d9;
+}
+
+        .notes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 20px;
+        }
+
+        .note {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .note h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .note p {
+            font-size: 14px;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .note button {
+            display: block;
+            margin-top: 10px;
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search">
+            <input type="text" id="searchInput" placeholder="Search notes..." onblur="searchNotes()">
+        </div>
+        <!-- Add this code after the search div -->
+        <div class="add-note">
+            <form id="addNoteForm">
+                <input type="text" id="noteTitle" placeholder="Note title" required>
+<!--                <textarea id="noteContent" placeholder="Note content" required></textarea>-->
+                <button type="submit">Add Note</button>
+            </form>
+        </div>
+        <button  class="download" onclick="downloadNotes()">Download</button>
+
+        <button id="uploadButton" class="upload" onclick="uploadNotes()">Upload</button>
+        <input type="file" id="fileInput" accept=".json" >
+
+        <div class="notes" id="notesContainer">
+            <!-- Notes will be displayed here -->
+        </div>
+
+    </div>
+<script>
+    // const notes = [
+    //     {
+    //         title: 'First Note',
+    //         content: 'This is the content of the first note.'
+    //     },
+    //     {
+    //         title: 'Second Note',
+    //         content: 'This is the content of the second note.'
+    //     },
+    //     // Add more notes here
+    // ];
+    const notes = {{ notes | tojson }};
+
+
+    function displayNotes(filteredNotes) {
+        const notesContainer = document.getElementById('notesContainer');
+        notesContainer.innerHTML = '';
+
+        filteredNotes.forEach((note, index) => {
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'note';
+
+            const noteTitle = document.createElement('h3');
+            noteTitle.textContent = note.title;
+            noteTitle.style.cursor = "pointer"; // 添加手型光标效果
+            noteTitle.addEventListener('click', () => {
+              // 在这里添加点击事件的处理逻辑
+                // 跳转到/notes/index
+                window.location.href = '/notes/' + index;
+            });
+            noteTitle.addEventListener('mouseenter', () => {
+              noteTitle.style.textDecoration = "underline"; // 添加下划线效果
+            });
+            noteTitle.addEventListener('mouseleave', () => {
+              noteTitle.style.textDecoration = "none"; // 移除下划线效果
+            });
+            noteDiv.appendChild(noteTitle);
+
+            const noteContent = document.createElement('p');
+            noteContent.textContent = note.content.substring(0, 100) + '...';
+            noteDiv.appendChild(noteContent);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.onclick = () => {
+                // notes.splice(index, 1);
+                fetch('/notes/' + index, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // if (data.success) {
+                    //     window.location.reload();
+                    // } else {
+                    //     alert('Error deleting note.');
+                    // }
+                    window.location.reload();
+                });
+
+                displayNotes(notes);
+            };
+            noteDiv.appendChild(deleteButton);
+
+            notesContainer.appendChild(noteDiv);
+        });
+    }
+
+    function searchNotes() {
+        // const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        // const searchWords = searchInput.split(' ').filter(word => word.trim().length > 0);
+        //
+        // const filteredNotes = notes.filter(note => {
+        //     const noteTitle = note.title.toLowerCase();
+        //     const noteContent = note.content.toLowerCase();
+        //
+        //     // Check if all search words are present in the note's title or content
+        //     return searchWords.every(word => noteTitle.includes(word) || noteContent.includes(word));
+        // });
+
+
+
+    // displayNotes(filteredNotes);
+        $('#searchInput').on('blur', function() {
+            // var searchInput = $(this).val().toLowerCase();
+            // var searchWords = searchInput.split(' ').filter(word => word.trim().length > 0);
+            // var filteredNotes = notes.filter(note => {
+            //     const noteTitle = note.title.toLowerCase();
+            //     const noteContent = note.content.toLowerCase();
+            //     return searchWords.every(word => noteTitle.includes(word) || noteContent.includes(word));
+            // });
+            // displayNotes(filteredNotes);
+            const keyword=$(this).val();
+            $.ajax({
+                url:`/search_notes?keyword=${keyword}`,
+                type:`GET`,
+                dataType:`json`,
+                success:function (response) {
+                    displayNotes(response);
+                    // if (response.length>0){
+                    //
+                    //     displayNotes(response);
+                    // }
+                }
+
+            })
+        });
+
+    }
+    function addNote() {
+        const title = document.getElementById('noteTitle').value;
+        const content = "";
+
+        fetch('/notes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, content })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // if (data.success) {
+            //     window.location.reload();
+            // } else {
+            //
+            //     alert('Error adding note.');
+            // }
+            window.location.reload();
+        });
+    }
+
+
+    document.getElementById('addNoteForm').addEventListener('submit', event => {
+        event.preventDefault();
+        addNote();
+    });
+
+    function downloadNotes() {
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(notes)));
+        element.setAttribute('download', 'notes.json');
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+        async function uploadNotes(notes) {
+            const response = await fetch('/upload_notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notes: notes })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data;
+            } else {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
+            }
+        }
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+        }
+
+        const uploadButton = document.getElementById('uploadButton');
+        const fileInput = document.getElementById('fileInput');
+
+
+        uploadButton.addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.style.display = 'block';
+            const file = fileInput.files[0];
+            if (!file) {
+                // message.textContent = 'Please select a JSON file to upload.';
+                return;
+            }
+
+            try {
+                const fileContent = await readFile(file);
+                const notes = JSON.parse(fileContent);
+                if (!Array.isArray(notes)) {
+                    throw new Error('Invalid JSON format. Expected an array of notes.');
+                }
+
+                const result = await uploadNotes(notes);
+                // message.textContent = `Notes uploaded successfully: ${result.uploaded_notes}`;
+            } catch (error) {
+                // message.textContent = error.message;
+            }
+        });
+
+    displayNotes(notes);
+</script>
+</body>
+</html>
